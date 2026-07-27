@@ -91,6 +91,7 @@
     border:.5px solid rgba(11,16,14,.28);
     background:var(--fill);
     display:flex;align-items:center;justify-content:center;
+    min-width:0;min-height:0;aspect-ratio:auto;
     cursor:pointer;user-select:none;
     transition:filter .12s ease;
   }
@@ -103,7 +104,7 @@
     content:"";position:absolute;inset:3px;border:2px solid var(--ink);border-radius:3px;opacity:.75;
   }
   @media (hover:hover){ .cell:hover{filter:brightness(1.07)} }
-  .cell svg{width:64%;height:64%;display:block}
+  .cell svg{position:absolute;left:18%;top:18%;width:64%;height:64%;display:block}
   .mark-x{stroke:var(--glyph);stroke-width:2.6;stroke-linecap:round;fill:none;opacity:.42}
   .mark-crown{fill:var(--glyph)}
   .cell.placed svg{animation:settle .22s cubic-bezier(.34,1.56,.64,1)}
@@ -524,6 +525,7 @@ function say(text,kind){
 function drawBoard(){
   const n=state.n,region=state.puzzle.region;
   boardEl.style.gridTemplateColumns="repeat("+n+",1fr)";
+  boardEl.style.gridTemplateRows="repeat("+n+",1fr)";
   boardEl.innerHTML="";
   state.cells=[];
   for(let i=0;i<n*n;i++){
