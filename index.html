@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Koninginnen — logische puzzel</title>
+<meta name="description" content="Zet één kroon in elke rij, elke kolom en elk gekleurd gebied. Kronen mogen elkaar niet raken.">
+<meta name="theme-color" content="#0F1512">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%230F1512'/%3E%3Cpath d='M4.6 17.6 3.1 9.1c-.1-.8.8-1.3 1.5-.9L8 10.4l3-5.6c.4-.7 1.4-.7 1.8 0l3 5.6 3.4-2.2c.7-.4 1.6.1 1.5.9l-1.5 8.5zM4.8 19h14.4v2.1H4.8z' fill='%23C8A15A'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#0F1512;
+    --ink-2:#18211D;
+    --ink-3:#212D28;
+    --bone:#EDE6D6;
+    --slate:#8A968E;
+    --brass:#C8A15A;
+    --brass-dim:#8C7038;
+    --alarm:#E2604A;
+    --edge:#0B100E;
+    --radius:14px;
+    --board:min(92vw, 58vh, 520px);
+    --display:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    --ui:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(120% 80% at 50% -10%, #1B2620 0%, var(--ink) 60%),
+      var(--ink);
+    color:var(--bone);
+    font-family:var(--ui);
+    min-height:100dvh;
+    display:flex;justify-content:center;
+    padding:clamp(12px,3vw,28px) 14px calc(28px + env(safe-area-inset-bottom));
+    -webkit-text-size-adjust:100%;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .wrap{width:100%;max-width:560px;display:flex;flex-direction:column;gap:clamp(12px,2.4vw,18px)}
+
+  /* ---------- kop ---------- */
+  header{text-align:center}
+  h1{
+    font-family:var(--display);
+    font-size:clamp(26px,7.5vw,40px);
+    font-weight:600;letter-spacing:.11em;text-transform:uppercase;
+    margin:0;line-height:1;color:var(--bone);
+  }
+  .rule{
+    display:flex;align-items:center;gap:10px;margin:10px auto 0;max-width:330px;
+    color:var(--brass-dim);
+  }
+  .rule::before,.rule::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--brass-dim),transparent)}
+  .rule svg{width:15px;height:15px;fill:var(--brass);opacity:.9}
+  .tagline{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--slate);margin:9px 0 0;
+  }
+
+  /* ---------- statusregel ---------- */
+  .status{display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:var(--mono);font-size:12px}
+  .clock{display:flex;align-items:baseline;gap:8px;color:var(--brass);font-variant-numeric:tabular-nums;font-size:19px;letter-spacing:.06em}
+  .clock small{color:var(--slate);font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+  .grade{display:flex;align-items:center;gap:7px;color:var(--slate);letter-spacing:.1em;text-transform:uppercase;font-size:10px}
+  .pips{display:flex;gap:3px}
+  .pip{width:6px;height:6px;border-radius:50%;border:1px solid var(--brass-dim)}
+  .pip.on{background:var(--brass);border-color:var(--brass)}
+
+  /* ---------- bord ---------- */
+  .tray{
+    align-self:center;
+    padding:10px;border-radius:var(--radius);
+    background:linear-gradient(160deg,#26332C,#141C18);
+    box-shadow:0 1px 0 rgba(237,230,214,.06) inset, 0 18px 40px -22px #000;
+    position:relative;
+  }
+  .tray::after{
+    content:"";position:absolute;inset:5px;border-radius:9px;
+    border:1px solid rgba(200,161,90,.30);pointer-events:none;
+  }
+  #board{
+    width:var(--board);height:var(--board);
+    display:grid;gap:0;
+    border:2px solid var(--edge);border-radius:6px;overflow:hidden;
+    touch-action:manipulation;
+  }
+  .cell{
+    position:relative;appearance:none;padding:0;margin:0;
+    border:.5px solid rgba(11,16,14,.28);
+    background:var(--fill);
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;user-select:none;
+    transition:filter .12s ease;
+  }
+  .cell.t{border-top:2.5px solid var(--edge)}
+  .cell.b{border-bottom:2.5px solid var(--edge)}
+  .cell.l{border-left:2.5px solid var(--edge)}
+  .cell.r{border-right:2.5px solid var(--edge)}
+  .cell:focus-visible{outline:none;filter:brightness(1.16)}
+  .cell:focus-visible::before{
+    content:"";position:absolute;inset:3px;border:2px solid var(--ink);border-radius:3px;opacity:.75;
+  }
+  @media (hover:hover){ .cell:hover{filter:brightness(1.07)} }
+  .cell svg{width:64%;height:64%;display:block}
+  .mark-x{stroke:var(--glyph);stroke-width:2.6;stroke-linecap:round;fill:none;opacity:.42}
+  .mark-crown{fill:var(--glyph)}
+  .cell.placed svg{animation:settle .22s cubic-bezier(.34,1.56,.64,1)}
+  .cell.bad{animation:shake .3s ease}
+  .cell.bad::after{
+    content:"";position:absolute;inset:2px;border:2.5px solid var(--alarm);border-radius:3px;
+  }
+  .cell.hinted::after{
+    content:"";position:absolute;inset:2px;border:2.5px solid var(--brass);border-radius:3px;
+  }
+  .cell.win svg{animation:gleam .9s ease var(--d) both}
+  @keyframes settle{from{transform:scale(.4) translateY(-14%);opacity:0}to{transform:none;opacity:1}}
+  @keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+  @keyframes gleam{40%{transform:translateY(-11%) scale(1.13);filter:drop-shadow(0 0 7px rgba(255,238,196,.95))}}
+
+  /* ---------- knoppen ---------- */
+  .row{display:flex;gap:8px}
+  button{font-family:inherit;color:inherit;cursor:pointer}
+  .btn{
+    flex:1;padding:12px 8px;border-radius:10px;
+    background:var(--ink-2);border:1px solid rgba(237,230,214,.13);
+    color:var(--bone);font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;
+    transition:background .14s ease,border-color .14s ease;
+  }
+  .btn:hover:not(:disabled){background:var(--ink-3);border-color:rgba(200,161,90,.45)}
+  .btn:disabled{opacity:.34;cursor:not-allowed}
+  .btn.primary{background:var(--brass);color:#191308;border-color:var(--brass);font-weight:600}
+  .btn.primary:hover{background:#DBB56E}
+  .btn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+  .setup{
+    background:var(--ink-2);border:1px solid rgba(237,230,214,.09);border-radius:12px;
+    padding:12px;display:flex;flex-direction:column;gap:10px;
+  }
+  .setup-line{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate)}
+  .chips{display:flex;gap:5px}
+  .chip{
+    min-width:36px;padding:7px 9px;border-radius:8px;
+    background:transparent;border:1px solid rgba(237,230,214,.16);
+    color:var(--slate);font-family:var(--mono);font-size:12px;
+  }
+  .chip[aria-pressed="true"]{background:rgba(200,161,90,.16);border-color:var(--brass);color:var(--brass)}
+  .chip:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+  .linkbtn{
+    background:none;border:0;padding:4px 0;color:var(--slate);
+    font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+    text-decoration:underline;text-underline-offset:3px;
+  }
+  .linkbtn:hover{color:var(--bone)}
+
+  /* ---------- meldingen ---------- */
+  .note{
+    min-height:17px;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+    color:var(--slate);transition:color .2s ease;
+  }
+  .note.warn{color:var(--alarm)}
+  .note.good{color:var(--brass)}
+
+  /* ---------- spelregels ---------- */
+  details{background:var(--ink-2);border:1px solid rgba(237,230,214,.09);border-radius:12px;padding:0 14px}
+  summary{
+    padding:13px 0;cursor:pointer;list-style:none;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate);
+  }
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";float:right;color:var(--brass)}
+  details[open] summary::after{content:"–"}
+  details ol{margin:0 0 14px;padding-left:20px;font-size:14px;line-height:1.55;color:#CFC9BB}
+  details li{margin-bottom:7px}
+  details b{color:var(--bone)}
+
+  /* ---------- winscherm ---------- */
+  .scrim{
+    position:fixed;inset:0;background:rgba(9,13,11,.82);backdrop-filter:blur(3px);
+    display:flex;align-items:center;justify-content:center;padding:22px;z-index:9;
+    animation:fade .3s ease both;
+  }
+  .scrim[hidden]{display:none}
+  @keyframes fade{from{opacity:0}}
+  .card{
+    background:linear-gradient(160deg,#232F29,#131A16);
+    border:1px solid rgba(200,161,90,.4);border-radius:16px;
+    padding:26px 24px;max-width:330px;width:100%;text-align:center;
+  }
+  .card svg{width:44px;height:44px;fill:var(--brass);margin-bottom:6px}
+  .card h2{font-family:var(--display);font-size:27px;letter-spacing:.06em;margin:0 0 4px;font-weight:600}
+  .card p{margin:0 0 18px;color:var(--slate);font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+  .card .time{display:block;color:var(--brass);font-size:31px;margin:10px 0 2px;font-variant-numeric:tabular-nums}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Koninginnen</h1>
+    <div class="rule" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M4.6 17.6 3.1 9.1c-.1-.8.8-1.3 1.5-.9L8 10.4l3-5.6c.4-.7 1.4-.7 1.8 0l3 5.6 3.4-2.2c.7-.4 1.6.1 1.5.9l-1.5 8.5zM4.8 19h14.4v2.1H4.8z"/></svg>
+    </div>
+    <p class="tagline">één kroon per rij, kolom en gebied</p>
+  </header>
+
+  <div class="status">
+    <div class="clock"><span id="clock">0:00</span><small id="mode">dagpuzzel</small></div>
+    <div class="grade"><span id="gradeName">–</span><span class="pips" id="pips"></span></div>
+  </div>
+
+  <div class="tray"><div id="board" role="grid" aria-label="Speelbord"></div></div>
+
+  <p class="note" id="note">Tik één keer voor ✕, twee keer voor een kroon.</p>
+
+  <div class="row">
+    <button class="btn" id="undo" disabled>Terug</button>
+    <button class="btn" id="clear">Wissen</button>
+    <button class="btn" id="hint">Hint</button>
+  </div>
+
+  <div class="setup">
+    <div class="setup-line">
+      <span class="label">Formaat</span>
+      <div class="chips" id="sizes" role="group" aria-label="Bordformaat"></div>
+    </div>
+    <div class="setup-line">
+      <span class="label">Puzzel</span>
+      <div class="chips" role="group" aria-label="Soort puzzel">
+        <button class="chip" id="daily" aria-pressed="true">Van vandaag</button>
+        <button class="chip" id="random" aria-pressed="false">Willekeurig</button>
+      </div>
+    </div>
+    <div class="row"><button class="btn primary" id="newGame">Nieuwe puzzel</button></div>
+    <div style="text-align:center"><button class="linkbtn" id="reveal">Oplossing tonen</button></div>
+  </div>
+
+  <details>
+    <summary>Spelregels</summary>
+    <ol>
+      <li>Zet <b>precies één kroon</b> in elke rij, elke kolom en elk gekleurd gebied.</li>
+      <li><b>Tik één keer</b> voor een ✕ (hier kan geen kroon staan), <b>twee keer</b> voor een kroon.</li>
+      <li>Twee kronen mogen elkaar <b>niet raken</b>, ook niet diagonaal.</li>
+      <li>Elke puzzel heeft precies één oplossing en is te kraken zonder gokken.</li>
+    </ol>
+  </details>
+
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.6 17.6 3.1 9.1c-.1-.8.8-1.3 1.5-.9L8 10.4l3-5.6c.4-.7 1.4-.7 1.8 0l3 5.6 3.4-2.2c.7-.4 1.6.1 1.5.9l-1.5 8.5zM4.8 19h14.4v2.1H4.8z"/></svg>
+    <h2 id="winTitle">Opgelost</h2>
+    <p id="winSub">Alle kronen staan goed.</p>
+    <span class="time" id="winTime">0:00</span>
+    <p style="margin-bottom:20px">jouw tijd</p>
+    <div class="row">
+      <button class="btn" id="closeWin">Bekijken</button>
+      <button class="btn primary" id="againBtn">Volgende</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ══════════════════════════════════════════════════════════════
+   1. Puzzelmotor — genereert borden met precies één oplossing
+      die ook zonder gokken te kraken zijn.
+   ══════════════════════════════════════════════════════════════ */
+function mulberry32(a){return function(){a|=0;a=(a+0x6D2B79F5)|0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+function shuffle(a,rnd){for(let i=a.length-1;i>0;i--){const j=(rnd()*(i+1))|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
+function nbrs4(n,i){const r=(i/n)|0,c=i%n,o=[];if(r>0)o.push(i-n);if(r<n-1)o.push(i+n);if(c>0)o.push(i-1);if(c<n-1)o.push(i+1);return o;}
+
+function makePlacement(n,rnd){
+  const cols=[],used=new Array(n).fill(false);
+  const go=r=>{
+    if(r===n)return true;
+    for(const c of shuffle([...Array(n).keys()],rnd)){
+      if(used[c]||(r>0&&Math.abs(cols[r-1]-c)<2))continue;
+      used[c]=true;cols[r]=c;
+      if(go(r+1))return true;
+      used[c]=false;
+    }
+    return false;
+  };
+  return go(0)?cols:null;
+}
+
+function growRegions(n,placement,rnd){
+  const region=new Array(n*n).fill(-1);
+  const frontier=Array.from({length:n},()=>new Set());
+  const size=new Array(n).fill(1);
+  for(let r=0;r<n;r++){
+    const i=r*n+placement[r];region[i]=r;
+    for(const j of nbrs4(n,i))if(region[j]===-1)frontier[r].add(j);
+  }
+  let left=n*n-n;
+  while(left>0){
+    const live=[];
+    for(let g=0;g<n;g++){
+      for(const j of [...frontier[g]])if(region[j]!==-1)frontier[g].delete(j);
+      if(frontier[g].size)live.push(g);
+    }
+    if(!live.length)return null;
+    live.sort((a,b)=>size[a]-size[b]);
+    const g=live[(rnd()*rnd()*live.length)|0];
+    const cells=[...frontier[g]];
+    const cell=cells[(rnd()*cells.length)|0];
+    region[cell]=g;size[g]++;left--;
+    frontier[g].delete(cell);
+    for(const j of nbrs4(n,cell))if(region[j]===-1)frontier[g].add(j);
+  }
+  return region;
+}
+
+function solve(n,region,limit){
+  limit=limit||2;
+  const out=[],cur=new Array(n);
+  (function go(r,colMask,regMask,prev){
+    if(out.length>=limit)return;
+    if(r===n){out.push(cur.slice());return;}
+    for(let c=0;c<n;c++){
+      if(colMask&(1<<c))continue;
+      if(prev>=0&&Math.abs(prev-c)<2)continue;
+      const g=region[r*n+c];
+      if(regMask&(1<<g))continue;
+      cur[r]=c;
+      go(r+1,colMask|(1<<c),regMask|(1<<g),c);
+      if(out.length>=limit)return;
+    }
+  })(0,0,0,-1);
+  return out;
+}
+
+function connectedWithout(n,region,g,drop){
+  const cells=[];
+  for(let i=0;i<n*n;i++)if(region[i]===g&&i!==drop)cells.push(i);
+  if(!cells.length)return false;
+  const seen=new Set([cells[0]]),st=[cells[0]];
+  while(st.length){
+    const i=st.pop();
+    for(const j of nbrs4(n,i))if(j!==drop&&region[j]===g&&!seen.has(j)){seen.add(j);st.push(j);}
+  }
+  return seen.size===cells.length;
+}
+
+/* Zolang er meer dan één oplossing is: verplaats één vakje van een
+   ongewenste oplossing naar een buurgebied. Dat maakt die oplossing kapot. */
+function repair(n,region,placement,rnd){
+  const queenCell=new Set(placement.map((c,r)=>r*n+c));
+  for(let step=0;step<800;step++){
+    const sols=solve(n,region,2);
+    if(sols.length===1)return true;
+    if(!sols.length)return false;
+    const alt=sols.find(s=>s.some((c,r)=>c!==placement[r]))||sols[1];
+    const moves=[];
+    for(let r=0;r<n;r++){
+      const i=r*n+alt[r];
+      if(queenCell.has(i))continue;
+      const g=region[i];
+      if(!connectedWithout(n,region,g,i))continue;
+      for(const j of nbrs4(n,i))if(region[j]!==g)moves.push([i,region[j]]);
+    }
+    if(!moves.length)return false;
+    const mv=moves[(rnd()*moves.length)|0];
+    region[mv[0]]=mv[1];
+  }
+  return solve(n,region,2).length===1;
+}
+
+/* Lost de puzzel op zoals een mens: alleen met redeneerregels, nooit gokken.
+   De diepte vertelt welke regel het zwaarst nodig was → moeilijkheidsgraad. */
+function logicSolve(n,region){
+  const N=n*n;
+  const cand=new Array(N).fill(true),queen=new Array(N).fill(false);
+  let placed=0,depth=0;
+  const rowOf=i=>(i/n)|0,colOf=i=>i%n;
+  const lines={row:[],col:[],reg:[]};
+  for(let k=0;k<n;k++){lines.row.push([]);lines.col.push([]);lines.reg.push([]);}
+  for(let i=0;i<N;i++){lines.row[rowOf(i)].push(i);lines.col[colOf(i)].push(i);lines.reg[region[i]].push(i);}
+  const allGroups=lines.row.concat(lines.col,lines.reg);
+  const touching=(a,b)=>Math.abs(rowOf(a)-rowOf(b))<=1&&Math.abs(colOf(a)-colOf(b))<=1;
+  const open=cells=>cells.filter(i=>cand[i]&&!queen[i]);
+  const place=i=>{
+    queen[i]=true;placed++;
+    const kill=j=>{if(j!==i)cand[j]=false;};
+    lines.row[rowOf(i)].forEach(kill);
+    lines.col[colOf(i)].forEach(kill);
+    lines.reg[region[i]].forEach(kill);
+    for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+      const r=rowOf(i)+dr,c=colOf(i)+dc;
+      if(r>=0&&c>=0&&r<n&&c<n)kill(r*n+c);
+    }
+  };
+  const keyOf={row:rowOf,col:colOf,reg:i=>region[i]};
+  let go=true;
+  while(go&&placed<n){
+    go=false;
+    for(const grp of allGroups){
+      const o=grp.filter(i=>cand[i]);
+      if(!o.length)return{solved:false,depth:depth};
+      if(o.length===1&&!queen[o[0]]){place(o[0]);go=true;depth=Math.max(depth,1);}
+    }
+    if(go)continue;
+    for(const grp of allGroups){
+      const o=open(grp);
+      if(o.length<2)continue;
+      const inGrp=new Set(grp);
+      const trim=cells=>{let d=false;for(const j of cells)if(cand[j]&&!inGrp.has(j)){cand[j]=false;d=true;}return d;};
+      const rs=new Set(o.map(rowOf)),cs=new Set(o.map(colOf)),gs=new Set(o.map(i=>region[i]));
+      if(rs.size===1&&trim(lines.row[[...rs][0]])){go=true;depth=Math.max(depth,2);}
+      if(cs.size===1&&trim(lines.col[[...cs][0]])){go=true;depth=Math.max(depth,2);}
+      if(gs.size===1&&trim(lines.reg[[...gs][0]])){go=true;depth=Math.max(depth,2);}
+    }
+    if(go)continue;
+    const pairTypes=[["reg","row"],["reg","col"],["row","reg"],["col","reg"]];
+    for(const pt of pairTypes){
+      const A=pt[0],B=pt[1],sets=[];
+      for(let k=0;k<n;k++){
+        const o=open(lines[A][k]);
+        if(o.length)sets.push({k:k,keys:new Set(o.map(keyOf[B]))});
+      }
+      for(let size=2;size<=3&&!go;size++){
+        (function combo(start,chosen,union){
+          if(go)return;
+          if(chosen.length===size){
+            if(union.size!==size)return;
+            const keep=new Set(chosen.map(s=>s.k));
+            let did=false;
+            for(const b of union)for(const j of lines[B][b]){
+              if(cand[j]&&!queen[j]&&!keep.has(keyOf[A](j))){cand[j]=false;did=true;}
+            }
+            if(did){go=true;depth=Math.max(depth,3);}
+            return;
+          }
+          for(let i=start;i<sets.length;i++){
+            const u=new Set([...union,...sets[i].keys]);
+            if(u.size>size)continue;
+            combo(i+1,chosen.concat([sets[i]]),u);
+            if(go)return;
+          }
+        })(0,[],new Set());
+      }
+      if(go)break;
+    }
+    if(go)continue;
+    for(const grp of allGroups){
+      const o=open(grp);
+      if(o.length<2||o.length>6)continue;
+      const inO=new Set(o);
+      for(let j=0;j<N;j++){
+        if(!cand[j]||queen[j]||inO.has(j))continue;
+        if(o.every(i=>touching(i,j))){cand[j]=false;go=true;depth=Math.max(depth,4);}
+      }
+    }
+  }
+  return{solved:placed===n,depth:depth};
+}
+
+function generate(n,seed){
+  const rnd=mulberry32(seed>>>0);
+  for(let attempt=0;attempt<500;attempt++){
+    const placement=makePlacement(n,rnd);
+    if(!placement)continue;
+    const region=growRegions(n,placement,rnd);
+    if(!region)continue;
+    if(!repair(n,region,placement,rnd))continue;
+    const fair=logicSolve(n,region);
+    if(!fair.solved)continue;
+    return{n:n,region:region,placement:placement,depth:fair.depth};
+  }
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   2. Het spel
+   ══════════════════════════════════════════════════════════════ */
+const PALETTE=[
+  "#C8553D","#E0A458","#D9CB8E","#7FA66A","#4E9C93",
+  "#5B7FB9","#9B7BB8","#D397AE","#A79E8B"
+];
+
+const CROWN='<svg viewBox="0 0 24 24" aria-hidden="true"><path class="mark-crown" d="M4.6 17.6 3.1 9.1c-.1-.8.8-1.3 1.5-.9L8 10.4l3-5.6c.4-.7 1.4-.7 1.8 0l3 5.6 3.4-2.2c.7-.4 1.6.1 1.5.9l-1.5 8.5zM4.8 19h14.4v2.1H4.8z"/></svg>';
+const CROSS='<svg viewBox="0 0 24 24" aria-hidden="true"><path class="mark-x" d="M7 7l10 10M17 7L7 17"/></svg>';
+const GRADES={1:"makkelijk",2:"makkelijk",3:"pittig",4:"lastig"};
+const SIZES=[6,7,8,9];
+
+const el=id=>document.getElementById(id);
+const boardEl=el("board");
+
+let state={
+  n:8, puzzle:null, marks:null, history:[],
+  cells:[], started:0, tick:null, done:false, daily:true, seedShown:""
+};
+
+function luminance(hex){
+  const r=parseInt(hex.slice(1,3),16)/255,g=parseInt(hex.slice(3,5),16)/255,b=parseInt(hex.slice(5,7),16)/255;
+  return 0.2126*r+0.7152*g+0.0722*b;
+}
+
+function todaySeed(n){
+  const d=new Date();
+  return (d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate())*13+n*7919;
+}
+
+function fmt(ms){
+  const s=Math.floor(ms/1000);
+  return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+}
+
+function say(text,kind){
+  const note=el("note");
+  note.textContent=text;
+  note.className="note"+(kind?" "+kind:"");
+}
+
+/* ---------- bord tekenen ---------- */
+function drawBoard(){
+  const n=state.n,region=state.puzzle.region;
+  boardEl.style.gridTemplateColumns="repeat("+n+",1fr)";
+  boardEl.innerHTML="";
+  state.cells=[];
+  for(let i=0;i<n*n;i++){
+    const r=(i/n)|0,c=i%n,g=region[i];
+    const b=document.createElement("button");
+    b.className="cell";
+    b.type="button";
+    b.dataset.i=i;
+    b.style.setProperty("--fill",PALETTE[g]);
+    b.style.setProperty("--glyph",luminance(PALETTE[g])>0.55?"#1A1410":"#FFF6E4");
+    if(r===0||region[i-n]!==g)b.classList.add("t");
+    if(r===n-1||region[i+n]!==g)b.classList.add("b");
+    if(c===0||region[i-1]!==g)b.classList.add("l");
+    if(c===n-1||region[i+1]!==g)b.classList.add("r");
+    b.setAttribute("aria-label","rij "+(r+1)+", kolom "+(c+1)+", gebied "+(g+1));
+    boardEl.appendChild(b);
+    state.cells.push(b);
+  }
+}
+
+/* ---------- conflicten zoeken ---------- */
+function conflicts(){
+  const n=state.n,m=state.marks,bad=new Set(),crowns=[];
+  for(let i=0;i<n*n;i++)if(m[i]===2)crowns.push(i);
+  for(let a=0;a<crowns.length;a++)for(let b=a+1;b<crowns.length;b++){
+    const i=crowns[a],j=crowns[b];
+    const ri=(i/n)|0,ci=i%n,rj=(j/n)|0,cj=j%n;
+    if(ri===rj||ci===cj||state.puzzle.region[i]===state.puzzle.region[j]||
+       (Math.abs(ri-rj)<=1&&Math.abs(ci-cj)<=1)){bad.add(i);bad.add(j);}
+  }
+  return{bad:bad,count:crowns.length};
+}
+
+function render(){
+  const m=state.marks,{bad,count}=conflicts();
+  state.cells.forEach((cell,i)=>{
+    const want=m[i]===2?CROWN:m[i]===1?CROSS:"";
+    if(cell.dataset.mark!==String(m[i])){
+      cell.innerHTML=want;
+      cell.dataset.mark=String(m[i]);
+      if(m[i]===2)cell.classList.add("placed");
+      else cell.classList.remove("placed");
+    }
+    const isBad=bad.has(i);
+    cell.classList.toggle("bad",isBad);
+  });
+  el("undo").disabled=state.history.length===0||state.done;
+  if(!state.done){
+    if(bad.size)say("Twee kronen botsen.","warn");
+    else if(count===state.n)say("");
+    else say(count+" van "+state.n+" kronen geplaatst.");
+  }
+  if(!state.done&&count===state.n&&bad.size===0)win();
+}
+
+/* ---------- spelen ---------- */
+function tap(i){
+  if(state.done)return;
+  if(!state.started)startClock();
+  state.history.push([i,state.marks[i]]);
+  state.marks[i]=(state.marks[i]+1)%3;
+  state.cells[i].classList.remove("hinted");
+  render();
+}
+
+function startClock(){
+  state.started=Date.now();
+  state.tick=setInterval(()=>{el("clock").textContent=fmt(Date.now()-state.started);},250);
+}
+function stopClock(){clearInterval(state.tick);state.tick=null;}
+
+function win(){
+  state.done=true;stopClock();
+  const t=state.started?fmt(Date.now()-state.started):"0:00";
+  state.cells.forEach((cell,i)=>{
+    if(state.marks[i]===2){
+      cell.classList.add("win");
+      cell.style.setProperty("--d",(((i/state.n)|0)*0.07)+"s");
+    }
+  });
+  say("Opgelost in "+t+".","good");
+  el("winTime").textContent=t;
+  el("winSub").textContent=state.n+"×"+state.n+" · "+GRADES[state.puzzle.depth];
+  setTimeout(()=>{el("scrim").hidden=false;el("againBtn").focus();},700);
+}
+
+/* ---------- hint ---------- */
+function hint(){
+  if(state.done)return;
+  const n=state.n,sol=state.puzzle.placement;
+  const correct=new Set(sol.map((c,r)=>r*n+c));
+  for(let i=0;i<n*n;i++){
+    if(state.marks[i]===2&&!correct.has(i)){
+      state.cells[i].classList.add("bad");
+      say("Deze kroon kan er niet staan.","warn");
+      return;
+    }
+  }
+  const missing=[];
+  for(const i of correct)if(state.marks[i]!==2)missing.push(i);
+  if(!missing.length){say("Alles staat al goed.","good");return;}
+  const pick=missing[(Math.random()*missing.length)|0];
+  if(!state.started)startClock();
+  state.history.push([pick,state.marks[pick]]);
+  state.marks[pick]=2;
+  render();
+  state.cells[pick].classList.add("hinted");
+  say("Eén kroon voor je geplaatst.","good");
+}
+
+function reveal(){
+  const n=state.n;
+  state.marks.fill(0);
+  state.puzzle.placement.forEach((c,r)=>{state.marks[r*n+c]=2;});
+  state.history=[];
+  state.done=true;stopClock();
+  state.cells.forEach(c=>{c.dataset.mark="";c.classList.remove("hinted","bad");});
+  render();
+  say("De oplossing.","good");
+}
+
+/* ---------- nieuwe puzzel ---------- */
+function newPuzzle(){
+  el("scrim").hidden=true;
+  stopClock();
+  state.started=0;state.done=false;state.history=[];
+  el("clock").textContent="0:00";
+  say("Puzzel wordt gemaakt…");
+  boardEl.style.opacity=".35";
+  setTimeout(()=>{
+    const seed=state.daily?todaySeed(state.n):(Math.random()*4294967295)>>>0;
+    const p=generate(state.n,seed);
+    boardEl.style.opacity="1";
+    if(!p){say("Dat lukte niet — probeer nog eens.","warn");return;}
+    state.puzzle=p;
+    state.marks=new Array(state.n*state.n).fill(0);
+    drawBoard();
+    render();
+    const pips=el("pips");
+    pips.innerHTML="";
+    const level=p.depth<=2?1:p.depth===3?2:3;
+    for(let i=0;i<3;i++){
+      const d=document.createElement("span");
+      d.className="pip"+(i<level?" on":"");
+      pips.appendChild(d);
+    }
+    el("gradeName").textContent=GRADES[p.depth];
+    el("mode").textContent=state.daily?"puzzel van vandaag":"willekeurig";
+    say("Tik één keer voor ✕, twee keer voor een kroon.");
+  },30);
+}
+
+/* ---------- bediening ---------- */
+boardEl.addEventListener("click",e=>{
+  const cell=e.target.closest(".cell");
+  if(cell)tap(+cell.dataset.i);
+});
+boardEl.addEventListener("keydown",e=>{
+  const cell=e.target.closest(".cell");
+  if(!cell)return;
+  const i=+cell.dataset.i,n=state.n,r=(i/n)|0,c=i%n;
+  let to=-1;
+  if(e.key==="ArrowUp"&&r>0)to=i-n;
+  else if(e.key==="ArrowDown"&&r<n-1)to=i+n;
+  else if(e.key==="ArrowLeft"&&c>0)to=i-1;
+  else if(e.key==="ArrowRight"&&c<n-1)to=i+1;
+  else if(e.key==="Backspace"||e.key==="Delete"){
+    if(state.marks[i]){state.history.push([i,state.marks[i]]);state.marks[i]=0;render();}
+    e.preventDefault();return;
+  }
+  if(to>=0){state.cells[to].focus();e.preventDefault();}
+});
+
+el("undo").addEventListener("click",()=>{
+  const last=state.history.pop();
+  if(!last)return;
+  state.marks[last[0]]=last[1];
+  state.cells[last[0]].classList.remove("hinted");
+  render();
+});
+el("clear").addEventListener("click",()=>{
+  if(state.done)return;
+  state.marks.fill(0);state.history=[];
+  state.cells.forEach(c=>c.classList.remove("hinted"));
+  render();
+});
+el("hint").addEventListener("click",hint);
+el("reveal").addEventListener("click",reveal);
+el("newGame").addEventListener("click",newPuzzle);
+el("closeWin").addEventListener("click",()=>{el("scrim").hidden=true;});
+el("againBtn").addEventListener("click",()=>{
+  if(state.daily){state.daily=false;syncModeChips();}
+  newPuzzle();
+});
+
+function syncModeChips(){
+  el("daily").setAttribute("aria-pressed",String(state.daily));
+  el("random").setAttribute("aria-pressed",String(!state.daily));
+}
+el("daily").addEventListener("click",()=>{state.daily=true;syncModeChips();newPuzzle();});
+el("random").addEventListener("click",()=>{state.daily=false;syncModeChips();newPuzzle();});
+
+const sizesEl=el("sizes");
+SIZES.forEach(n=>{
+  const b=document.createElement("button");
+  b.className="chip";b.textContent=n+"×"+n;
+  b.setAttribute("aria-pressed",String(n===state.n));
+  b.addEventListener("click",()=>{
+    state.n=n;
+    [...sizesEl.children].forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+    newPuzzle();
+  });
+  sizesEl.appendChild(b);
+});
+
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape")el("scrim").hidden=true;
+});
+
+newPuzzle();
+</script>
+</body>
+</html>
